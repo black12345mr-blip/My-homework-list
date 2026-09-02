@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐼 แพนด้าตามงาน x Academic Quest</title>
+    
+    <!-- Tailwind CSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Google Identity Services (Google Login) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .task-card { transition: all 0.2s ease-in-out; }
+        .task-card:hover { transform: translateY(-2px); }
+        #appBackground {
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body id="appBackground" class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-12 transition-colors duration-300">
+
+    <div class="absolute inset-0 -z-10 min-h-screen bg-slate-900/40 backdrop-blur-[2px] transition-colors"></div>
+
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- Header & Auth Section -->
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-white">
+            <div class="flex items-center gap-3">
+                <span class="text-4xl">🐼</span>
+                <div>
+                    <span class="bg-white/25 backdrop-blur-md text-xs font-semibold px-3.5 py-1.5 rounded-full border border-white/30">🐼 Panda Task Tracker</span>
+                    <h1 class="text-2xl md:text-3xl font-bold mt-1 drop-shadow-md">แพนด้าตามงาน & ระบบจัดการการบ้าน</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Google Login Component -->
+                <div id="loginSection" class="bg-white/20 backdrop-blur-md p-1.5 rounded-2xl border border-white/30">
+                    <div id="g_id_onload"
+                        data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                        data-callback="handleGoogleLogin">
+                    </div>
+                    <div class="g_id_signin" data-type="standard" data-shape="pill" data-size="medium"></div>
+                </div>
+
+                <!-- User Profile (แสดงหลัง Login) -->
+                <div id="userProfile" class="hidden flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/30">
+                    <img id="userImg" src="" alt="Profile" class="w-7 h-7 rounded-full border border-white">
+                    <span id="userName" class="text-xs font-semibold text-white"></span>
+                    <button onclick="logoutGoogle()" class="text-xs text-rose-300 hover:text-rose-100 ml-1 font-bold">✕</button>
+                </div>
+
+                <label class="bg-white/20 hover:bg-white/30 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/30 text-xs font-medium cursor-pointer transition flex items-center gap-1.5 shadow-xs">
+                    🖼️ วอลเปเปอร์
+                    <input type="file" id="wallpaperInput" accept="image/*" class="hidden" onchange="changeWallpaper(event)">
+                </label>
+                <button onclick="removeWallpaper()" class="bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/25 text-xs transition" title="รีเซ็ตวอลเปเปอร์">
+                    🗑️
+                </button>
+                <button onclick="toggleDarkMode()" class="bg-white/20 hover:bg-white/30 backdrop-blur-md p-2.5 rounded-2xl border border-white/30 text-sm transition">
+                    🌙 / ☀️
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex gap-2 mb-8 overflow-x-auto pb-1">
+            <button onclick="switchTab('personal')" id="tabPersonal" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-emerald-600 text-white whitespace-nowrap">
+                📚 การบ้านส่วนตัว (Panda Board)
+            </button>
+            <button onclick="switchTab('history')" id="tabHistory" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-white/30 whitespace-nowrap">
+                📈 ประวัติงาน & สถิติรายวิชา
+            </button>
+            <button onclick="switchTab('leader')" id="tabLeader" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-white/30 whitespace-nowrap">
+                👑 โหมดหัวหน้าห้อง
+            </button>
+        </div>
+
+        <!-- Section 1: Personal Tasks -->
+        <div id="sectionPersonal" class="space-y-8">
+            <section class="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-5 rounded-3xl shadow-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">📊 แพนด้าเช็กความคืบหน้าเคลียร์การบ้าน</span>
+                    <span id="progressText" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+                    <div id="progressBar" class="bg-gradient-to-r from-emerald-500 to-teal-600 h-full w-0 transition-all duration-500"></div>
+                </div>
+            </section>
+
+            <section class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-6 rounded-3xl shadow-xl">
+                <h2 class="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <span>🐼➕</span> ฝากแพนด้าช่วยตามการบ้านใหม่
+                </h2>
+
+                <form id="taskForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ชื่องาน / การบ้าน *</label>
+                        <input type="text" id="taskTitle" placeholder="เช่น ทำแบบฝึกหัด, อ่านหนังสือสอบ..." required
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">หมวดหมู่วิชา *</label>
+                        <select id="taskCategorySelect" onchange="handleCategoryChange()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                            <option value="🧮 คณิตศาสตร์">🧮 คณิตศาสตร์</option>
+                            <option value="🧪 เคมี">🧪 เคมี</option>
+                            <option value="⚡ ฟิสิกส์">⚡ ฟิสิกส์</option>
+                            <option value="🧬 ชีวะ">🧬 ชีวะ</option>
+                            <option value="🌌 ดาราศาสตร์">🌌 ดาราศาสตร์</option>
+                            <option value="📖 ภาษาไทย">📖 ภาษาไทย</option>
+                            <option value="🌍 สังคมศึกษา">🌍 สังคมศึกษา</option>
+                            <option value="💬 ภาษาอังกฤษ">💬 ภาษาอังกฤษ</option>
+                            <option value="💻 คอมพิวเตอร์">💻 คอมพิวเตอร์</option>
+                            <option value="🎨 ศิลปะ/การงาน">🎨 ศิลปะ/การงาน</option>
+                            <option value="🏃 พละ/สุขศึกษา">🏃 พละ/สุขศึกษา</option>
+                            <option value="custom">✏️ เพิ่มวิชาอื่นๆ...</option>
+                        </select>
+                        <input type="text" id="taskCategoryCustom" placeholder="พิมพ์ชื่อวิชา..." style="display:none;"
+                            class="w-full mt-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">กำหนดส่ง *</label>
+                        <input type="date" id="taskDate" required
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ความเร่งด่วน</label>
+                        <select id="taskPriority" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                            <option value="ปกติ">🟢 ปกติ</option>
+                            <option value="ด่วน">⚡ ด่วน (พรุ่งนี้)</option>
+                            <option value="ด่วนที่สุด">🔥 ด่วนที่สุด (วันนี้!)</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">แนบลิงก์ (Canva, Google Drive ฯลฯ)</label>
+                        <input type="url" id="taskLink" placeholder="https://..." 
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                    </div>
+
+                    <div class="md:col-span-2 flex items-end">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl px-4 py-2.5 text-sm shadow-md shadow-emerald-600/25 transition">
+                            🐼 บันทึกการบ้าน & ส่งเข้า Gmail
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <div class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                <span class="text-lg">🔍</span>
+                <input type="text" id="searchInput" placeholder="พิมพ์ชื่อการบ้าน หรือวิชาเพื่อค้นหางานส่วนตัว..." oninput="renderTasks()"
+                    class="w-full bg-transparent border-none text-sm focus:outline-none dark:text-white">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
+                    <div class="flex justify-between items-center mb-4 px-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">ยังไม่ได้ทำ (To Do)</h3>
+                        </div>
+                        <span id="todoCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                    </div>
+                    <div id="todoList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                </div>
+
+                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
+                    <div class="flex justify-between items-center mb-4 px-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">กำลังทำ (In Progress)</h3>
+                        </div>
+                        <span id="inprogressCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                    </div>
+                    <div id="inprogressList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                </div>
+
+                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
+                    <div class="flex justify-between items-center mb-4 px-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">ส่งแล้ว / เสร็จสิ้น (Done)</h3>
+                        </div>
+                        <span id="doneCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                    </div>
+                    <div id="doneList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Homework History & Analytics -->
+        <div id="sectionHistory" class="space-y-8" style="display: none;">
+            <section class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-6 rounded-3xl shadow-xl">
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span>📈</span> ประวัติและสถิติงานแยกตามรายวิชา
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">สรุปภาพรวมว่าวิชาไหนมีงานทั้งหมดเท่าไหร่ และทำเสร็จไปแล้วกี่เปอร์เซ็นต์</p>
+                    </div>
+                </div>
+
+                <div id="subjectStatsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
+
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">🗂️ ประวัติการบ้านทั้งหมด (History Log)</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                                <th class="py-3 px-4 font-semibold">ชื่องาน</th>
+                                <th class="py-3 px-4 font-semibold">หมวดหมู่วิชา</th>
+                                <th class="py-3 px-4 font-semibold">กำหนดส่ง</th>
+                                <th class="py-3 px-4 font-semibold">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Section 3: Leader Board -->
+        <div id="sectionLeader" class="space-y-8" style="display: none;">
+            <section class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-6 rounded-3xl shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span>👑</span> โหมดหัวหน้าห้อง: บันทึกงานแยกตามวิชาประจำวัน
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">จดงานแต่ละวิชาในวันนี้เพื่อเตรียมคัดลอกส่งไลน์ห้องในคลิกเดียว</p>
+                    </div>
+                    <button onclick="copyLeaderReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2.5 rounded-2xl text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 shrink-0">
+                        📋 คัดลอกข้อความส่งไลน์ห้องทันที
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">📅 เลือกวันที่สั่งการบ้าน</label>
+                    <input type="date" id="leaderDate" onchange="loadLeaderData()" class="w-full md:w-64 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                </div>
+
+                <form id="leaderForm" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">เลือกวิชา *</label>
+                        <select id="leaderSubject" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                            <option value="🧮 คณิตศาสตร์">🧮 คณิตศาสตร์</option>
+                            <option value="🧪 เคมี">🧪 เคมี</option>
+                            <option value="⚡ ฟิสิกส์">⚡ ฟิสิกส์</option>
+                            <option value="🧬 ชีวะ">🧬 ชีวะ</option>
+                            <option value="🌌 ดาราศาสตร์">🌌 ดาราศาสตร์</option>
+                            <option value="📖 ภาษาไทย">📖 ภาษาไทย</option>
+                            <option value="🌍 สังคมศึกษา">🌍 สังคมศึกษา</option>
+                            <option value="💬 ภาษาอังกฤษ">💬 ภาษาอังกฤษ</option>
+                            <option value="💻 คอมพิวเตอร์">💻 คอมพิวเตอร์</option>
+                            <option value="🎨 ศิลปะ/การงาน">🎨 ศิลปะ/การงาน</option>
+                            <option value="🏃 พละ/สุขศึกษา">🏃 พละ/สุขศึกษา</option>
+                            <option value="📌 ประกาศทั่วไป/อื่นๆ">📌 ประกาศทั่วไป/อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">รายละเอียดงานที่ครูสั่ง *</label>
+                        <input type="text" id="leaderTaskDesc" placeholder="เช่น ทำแบบฝึกหัดหน้า 50 ข้อ 1-5..." required
+                            class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white">
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl px-3 py-2 text-xs transition">
+                            + เพิ่มงานลงกระดาน
+                        </button>
+                    </div>
+                </form>
+
+                <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">📋 รายการงานในบอร์ดหัวหน้า (สำหรับวันนี้)</h3>
+                <div id="leaderTaskList" class="space-y-2.5"></div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Config & App State ---
+        const GAS_WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL"; // วาง Web App URL จาก Google Apps Script ที่นี่
+        let currentUser = null;
+
+        // --- 1. ระบบ Google Sign-In (GIS) ---
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c => 
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        function handleGoogleLogin(response) {
+            const profile = parseJwt(response.credential);
+            currentUser = {
+                name: profile.name,
+                email: profile.email,
+                picture: profile.picture
+            };
+
+            document.getElementById('userName').innerText = currentUser.name;
+            document.getElementById('userImg').src = currentUser.picture;
+
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('userProfile').classList.remove('hidden');
+        }
+
+        function logoutGoogle() {
+            currentUser = null;
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('userProfile').classList.add('hidden');
+        }
+
+        // --- 2. ระบบจัดการ Tab ---
+        function switchTab(tab) {
+            const pSec = document.getElementById('sectionPersonal');
+            const hSec = document.getElementById('sectionHistory');
+            const lSec = document.getElementById('sectionLeader');
+            
+            const pBtn = document.getElementById('tabPersonal');
+            const hBtn = document.getElementById('tabHistory');
+            const lBtn = document.getElementById('tabLeader');
+
+            pSec.style.display = 'none';
+            hSec.style.display = 'none';
+            lSec.style.display = 'none';
+
+            const inactiveClass = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-white/30 whitespace-nowrap";
+            pBtn.className = inactiveClass;
+            hBtn.className = inactiveClass;
+            lBtn.className = inactiveClass;
+
+            if (tab === 'personal') {
+                pSec.style.display = 'block';
+                pBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-emerald-600 text-white whitespace-nowrap";
+            } else if (tab === 'history') {
+                hSec.style.display = 'block';
+                hBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-emerald-600 text-white whitespace-nowrap";
+                renderHistoryAndStats();
+            } else if (tab === 'leader') {
+                lSec.style.display = 'block';
+                lBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-emerald-600 text-white whitespace-nowrap";
+            }
+        }
+
+        // --- 3. ตั้งค่า Dark Mode & Wallpaper ---
+        if(localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+        const savedBg = localStorage.getItem('academic_wallpaper');
+        if(savedBg) {
+            document.getElementById('appBackground').style.backgroundImage = `url('${savedBg}')`;
+        }
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        function changeWallpaper(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    document.getElementById('appBackground').style.backgroundImage = `url('${base64Image}')`;
+                    localStorage.setItem('academic_wallpaper', base64Image);
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeWallpaper() {
+            document.getElementById('appBackground').style.backgroundImage = 'none';
+            localStorage.removeItem('academic_wallpaper');
+        }
+
+        // --- 4. ระบบการบ้านส่วนตัว (Panda Task Board) ---
+        let tasks = JSON.parse(localStorage.getItem('academic_quest_tasks')) || [];
+
+        function handleCategoryChange() {
+            const select = document.getElementById('taskCategorySelect');
+            const customInput = document.getElementById('taskCategoryCustom');
+            if (select.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
+
+        const taskForm = document.getElementById('taskForm');
+        taskForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const selectVal = document.getElementById('taskCategorySelect').value;
+            const customVal = document.getElementById('taskCategoryCustom').value;
+            const finalCategory = selectVal === 'custom' ? customVal : selectVal;
+
+            const newTask = {
+                id: Date.now(),
+                title: document.getElementById('taskTitle').value,
+                category: finalCategory,
+                date: document.getElementById('taskDate').value,
+                priority: document.getElementById('taskPriority').value,
+                link: document.getElementById('taskLink').value,
+                userEmail: currentUser ? currentUser.email : "ไม่ได้เข้าสู่ระบบ",
+                subtasks: [],
+                status: 'todo'
+            };
+
+            tasks.push(newTask);
+            saveAndRenderTasks();
+
+            // ส่งข้อมูลไปยัง Google Apps Script Backend (Gmail Notification)
+            sendToBackendGAS(newTask);
+
+            taskForm.reset();
+            handleCategoryChange();
+        });
+
+        function sendToBackendGAS(taskData) {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+                console.log("Demo Mode: ยังไม่ได้เชื่อมต่อ GAS Web App URL");
+                return;
+            }
+
+            fetch(GAS_WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    userEmail: taskData.userEmail,
+                    subject: taskData.category,
+                    taskTitle: taskData.title,
+                    dueDate: taskData.date
+                })
+            })
+            .then(res => res.json())
+            .then(data => console.log("ส่งข้อมูลไปยัง Google Sheets/Gmail เรียบร้อย:", data))
+            .catch(err => console.error("เกิดข้อผิดพลาดในการส่งข้อมูลไป GAS:", err));
+        }
+
+        function saveAndRenderTasks() {
+            localStorage.setItem('academic_quest_tasks', JSON.stringify(tasks));
+            renderTasks();
+        }
+
+        function changeStatus(id, newStatus) {
+            tasks = tasks.map(task => {
+                if (task.id === id) task.status = newStatus;
+                return task;
+            });
+            saveAndRenderTasks();
+        }
+
+        function deleteTask(id) {
+            if(confirm('ต้องการลบการบ้านนี้ใช่ไหม?')) {
+                tasks = tasks.filter(task => task.id !== id);
+                saveAndRenderTasks();
+            }
+        }
+
+        function addSubtask(taskId) {
+            const input = document.getElementById(`sub-input-${taskId}`);
+            if(!input.value.trim()) return;
+            tasks = tasks.map(task => {
+                if(task.id === taskId) {
+                    if(!task.subtasks) task.subtasks = [];
+                    task.subtasks.push({ id: Date.now(), text: input.value, done: false });
+                }
+                return task;
+            });
+            saveAndRenderTasks();
+        }
+
+        function toggleSubtask(taskId, subId) {
+            tasks = tasks.map(task => {
+                if(task.id === taskId) {
+                    task.subtasks = task.subtasks.map(sub => {
+                        if(sub.id === subId) sub.done = !sub.done;
+                        return sub;
+                    });
+                }
+                return task;
+            });
+            saveAndRenderTasks();
+        }
+
+        function deleteSubtask(taskId, subId) {
+            tasks = tasks.map(task => {
+                if(task.id === taskId) {
+                    task.subtasks = task.subtasks.filter(sub => sub.id !== subId);
+                }
+                return task;
+            });
+            saveAndRenderTasks();
+        }
+
+        function triggerManualGmail(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                sendToBackendGAS(task);
+                alert("🐼 ส่งคำขอส่ง Gmail เตือนความจำแล้ว!");
+            }
+        }
+
+        function renderTasks() {
+            const todoList = document.getElementById('todoList');
+            const inprogressList = document.getElementById('inprogressList');
+            const doneList = document.getElementById('doneList');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            todoList.innerHTML = '';
+            inprogressList.innerHTML = '';
+            doneList.innerHTML = '';
+
+            let todoC = 0, inprogressC = 0, doneC = 0;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const filteredTasks = tasks.filter(task => {
+                if (!searchQuery) return true;
+                return task.title.toLowerCase().includes(searchQuery) || task.category.toLowerCase().includes(searchQuery);
+            });
+
+            filteredTasks.forEach(task => {
+                let priorityBadge = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+                if (task.priority === 'ด่วน') priorityBadge = 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900';
+                if (task.priority === 'ด่วนที่สุด') priorityBadge = 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900';
+
+                let isOverdue = task.date < todayStr && task.status !== 'done';
+                let dateBadgeClass = isOverdue ? 'text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded' : 'text-slate-400 dark:text-slate-500';
+
+                let subHtml = '';
+                if(task.subtasks && task.subtasks.length > 0) {
+                    subHtml = `<div class="space-y-1.5 my-3 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">`;
+                    task.subtasks.forEach(sub => {
+                        subHtml += `
+                            <div class="flex items-center justify-between text-xs">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id}, ${sub.id})" class="rounded text-emerald-600 focus:ring-emerald-500">
+                                    <span class="${sub.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}">${sub.text}</span>
+                                </label>
+                                <button onclick="deleteSubtask(${task.id}, ${sub.id})" class="text-slate-300 hover:text-rose-500">×</button>
+                            </div>
+                        `;
+                    });
+                    subHtml += `</div>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "task-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <span class="font-medium text-slate-800 dark:text-slate-200 text-sm leading-snug">${task.title}</span>
+                            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${priorityBadge}">${task.priority}</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium px-2 py-0.5 rounded">${task.category}</span>
+                            <button onclick="triggerManualGmail(${task.id})" class="text-[10px] text-slate-400 hover:text-emerald-600 transition" title="ส่ง Gmail เตือนกดตรงนี้">📧 ส่ง Gmail</button>
+                        </div>
+                        ${task.link ? `<a href="${task.link}" target="_blank" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 mb-2 font-medium">🔗 เปิดลิงก์งาน/สไลด์</a>` : ''}
+                        
+                        ${subHtml}
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="sub-input-${task.id}" placeholder="+ เพิ่มข้อย่อย..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:text-white">
+                            <button onclick="addSubtask(${task.id})" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs px-2.5 py-1 rounded-lg font-medium shrink-0">เพิ่ม</button>
+                        </div>
+
+                        <div class="text-[11px] mb-3 ${dateBadgeClass}">
+                            📅 กำหนดส่ง: ${task.date} ${isOverdue ? '⚠️ (เลยกำหนด)' : ''}
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            ${task.status !== 'todo' ? `<button onclick="changeStatus(${task.id}, 'todo')" class="text-slate-400 hover:text-emerald-600 transition">⬅️ ยังไม่ทำ</button>` : ''}
+                            ${task.status !== 'inprogress' && task.status !== 'done' ? `<button onclick="changeStatus(${task.id}, 'inprogress')" class="text-indigo-600 dark:text-indigo-400 font-medium transition">กำลังทำ ⚡</button>` : ''}
+                            ${task.status !== 'done' ? `<button onclick="changeStatus(${task.id}, 'done')" class="text-emerald-600 dark:text-emerald-400 font-medium transition">เสร็จ ✅</button>` : ''}
+                        </div>
+                        <button onclick="deleteTask(${task.id})" class="text-slate-300 hover:text-rose-500 transition text-[11px]">ลบ</button>
+                    </div>
+                `;
+
+                if (task.status === 'todo') {
+                    todoList.appendChild(card);
+                    todoC++;
+                } else if (task.status === 'inprogress') {
+                    inprogressList.appendChild(card);
+                    inprogressC++;
+                } else if (task.status === 'done') {
+                    doneList.appendChild(card);
+                    doneC++;
+                }
+            });
+
+            document.getElementById('todoCount').innerText = todoC;
+            document.getElementById('inprogressCount').innerText = inprogressC;
+            document.getElementById('doneCount').innerText = doneC;
+
+            const totalTasks = tasks.length;
+            const completedCount = tasks.filter(t => t.status === 'done').length;
+            const percent = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').innerText = percent + '% เสร็จสิ้น';
+        }
+
+        // --- 5. ระบบประวัติงานและสถิติ (History & Analytics) ---
+        function renderHistoryAndStats() {
+            const statsGrid = document.getElementById('subjectStatsGrid');
+            const tableBody = document.getElementById('historyTableBody');
+            
+            statsGrid.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            const subjectMap = {};
+            tasks.forEach(task => {
+                const cat = task.category || 'อื่นๆ';
+                if (!subjectMap[cat]) {
+                    subjectMap[cat] = { total: 0, done: 0 };
+                }
+                subjectMap[cat].total += 1;
+                if (task.status === 'done') {
+                    subjectMap[cat].done += 1;
+                }
+            });
+
+            if (Object.keys(subjectMap).length === 0) {
+                statsGrid.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-6">ยังไม่มีประวัติงานในระบบ</p>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">ยังไม่มีข้อมูลประวัติการบ้าน</td></tr>`;
+                return;
+            }
+
+            for (const [subject, data] of Object.entries(subjectMap)) {
+                const percent = data.total === 0 ? 0 : Math.round((data.done / data.total) * 100);
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">${subject}</span>
+                            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">${percent}%</span>
+                        </div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                            ทำแล้ว <span class="font-semibold text-emerald-600">${data.done}</span> จากทั้งหมด <span class="font-semibold">${data.total}</span> งาน
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div class="bg-emerald-600 h-full transition-all duration-500" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                statsGrid.appendChild(card);
+            }
+
+            tasks.forEach(task => {
+                let statusBadge = '';
+                if(task.status === 'todo') statusBadge = '<span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded text-[10px] font-medium">ยังไม่ได้ทำ</span>';
+                else if(task.status === 'inprogress') statusBadge = '<span class="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[10px] font-medium">กำลังทำ</span>';
+                else if(task.status === 'done') statusBadge = '<span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-medium">เสร็จสิ้น</span>';
+
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition";
+                row.innerHTML = `
+                    <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-200">${task.title}</td>
+                    <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${task.category}</td>
+                    <td class="py-3 px-4 text-slate-500">${task.date}</td>
+                    <td class="py-3 px-4">${statusBadge}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // --- 6. ระบบโหมดหัวหน้าห้อง (Leader Station) ---
+        let leaderData = JSON.parse(localStorage.getItem('academic_quest_leader_board')) || {};
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('leaderDate').value = todayStr;
+
+        const leaderForm = document.getElementById('leaderForm');
+        leaderForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('leaderDate').value;
+            const subject = document.getElementById('leaderSubject').value;
+            const desc = document.getElementById('leaderTaskDesc').value;
+
+            if(!leaderData[date]) leaderData[date] = [];
+            leaderData[date].push({ id: Date.now(), subject, desc });
+
+            localStorage.setItem('academic_quest_leader_board', JSON.stringify(leaderData));
+            document.getElementById('leaderTaskDesc').value = '';
+            loadLeaderData();
+        });
+
+        function loadLeaderData() {
+            const date = document.getElementById('leaderDate').value;
+            const listContainer = document.getElementById('leaderTaskList');
+            listContainer.innerHTML = '';
+
+            const items = leaderData[date] || [];
+            if(items.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl">ยังไม่มีการบันทึกงานของวันที่เลือกครับ</p>`;
+                return;
+            }
+
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs shadow-xs";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-slate-400">#${index + 1}</span>
+                        <span class="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg font-medium">${item.subject}</span>
+                        <span class="text-slate-700 dark:text-slate-200">${item.desc}</span>
+                    </div>
+                    <button onclick="deleteLeaderItem('${date}', ${item.id})" class="text-slate-300 hover:text-rose-500 p-1">ลบ</button>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        function deleteLeaderItem(date, id) {
+            if(confirm('ต้องการลบรายการนี้ออกจากบอร์ดหัวหน้าใช่ไหม?')) {
+                leaderData[date] = leaderData[date].filter(i => i.id !== id);
+                localStorage.setItem('academic_quest_leader_board', JSON.stringify(leaderData));
+                loadLeaderData();
+            }
+        }
+
+        function copyLeaderReport() {
+            const date = document.getElementById('leaderDate').value;
+            const items = leaderData[date] || [];
+
+            if(items.length === 0) {
+                alert('ยังไม่มีรายการงานสำหรับวันที่เลือกครับ');
+                return;
+            }
+
+            let report = `🐼 [แพนด้าตามงาน] สรุปการบ้านประจำวันที่ ${date}\n`;
+            report += `-----------------------------------\n`;
+
+            items.forEach((item, i) => {
+                report += `${i + 1}. [${item.subject}] ${item.desc}\n`;
+            });
+
+            report += `\n📌 เพื่อนๆ อย่าลืมรีบปั่นงานก่อนโดนแพนด้าดุนะ! 💪`;
+
+            navigator.clipboard.writeText(report).then(() => {
+                alert('คัดลอกข้อความสำหรับส่งไลน์ห้องสำเร็จแล้ว! นำไปวางในแชทกลุ่มได้เลยครับ');
+            });
+        }
+
+        // เริ่มต้นรันระบบ
+        renderTasks();
+        loadLeaderData();
+    </script>
+</body>
+</html>
