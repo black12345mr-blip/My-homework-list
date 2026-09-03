@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Quest - ระบบการบ้าน & หัวหน้าห้อง</title>
+    <title>Academic Quest - สมุดบันทึกการบ้าน</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -15,6 +15,23 @@
             background-position: center;
             background-attachment: fixed;
         }
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Notebook Theme Special Styles */
+        .notebook-spine {
+            background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #0f172a 100%);
+            box-shadow: inset 2px 0 5px rgba(0,0,0,0.5);
+        }
+        .notebook-page {
+            background-image: linear-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 100% 2rem;
+        }
+        .dark .notebook-page {
+            background-image: linear-gradient(#334155 1px, transparent 1px);
+        }
     </style>
 </head>
 <body id="appBackground" class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-12 transition-colors duration-300">
@@ -24,16 +41,16 @@
     <div class="max-w-6xl mx-auto px-4 py-8">
         <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-white">
             <div>
-                <span class="bg-white/25 backdrop-blur-md text-xs font-semibold px-3.5 py-1.5 rounded-full border border-white/30">⚔️ Academic Quest</span>
-                <h1 class="text-2xl md:text-3xl font-bold mt-2 drop-shadow-md">ระบบจัดการการบ้าน & ประวัติรายวิชา</h1>
+                <span class="bg-white/25 backdrop-blur-md text-xs font-semibold px-3.5 py-1.5 rounded-full border border-white/30">📖 Academic Notebook</span>
+                <h1 class="text-2xl md:text-3xl font-bold mt-2 drop-shadow-md">สมุดบันทึกการบ้าน & ติดตามสถานะงาน</h1>
             </div>
             
             <div class="flex items-center gap-2 flex-wrap">
                 <label class="bg-white/20 hover:bg-white/30 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/30 text-xs font-medium cursor-pointer transition flex items-center gap-1.5 shadow-sm">
-                    🖼️ เปลี่ยนวอลเปเปอร์
+                    🖼️ เปลี่ยนปกสมุด
                     <input type="file" id="wallpaperInput" accept="image/*" class="hidden" onchange="changeWallpaper(event)">
                 </label>
-                <button onclick="removeWallpaper()" class="bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/25 text-xs transition" title="รีเซ็ตวอลเปเปอร์">
+                <button onclick="removeWallpaper()" class="bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/25 text-xs transition" title="รีเซ็ตปก">
                     🗑️
                 </button>
                 <button onclick="toggleDarkMode()" class="bg-white/20 hover:bg-white/30 backdrop-blur-md p-2.5 rounded-2xl border border-white/30 text-sm transition">
@@ -42,10 +59,24 @@
             </div>
         </header>
 
+        <!-- Pinned Priority Bar: แถบแจ้งเตือนงานด่วนวันนี้/พรุ่งนี้ -->
+        <div id="pinnedBarContainer" class="mb-6" style="display: none;">
+            <div class="bg-rose-500/90 dark:bg-rose-950/90 backdrop-blur-xl border border-rose-400/50 text-white p-4 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl animate-bounce">🔥</span>
+                    <div>
+                        <h2 class="text-sm font-bold">งานด่วนต้องเคลียร์ (วันนี้ / พรุ่งนี้)</h2>
+                        <p id="pinnedBarText" class="text-xs text-rose-100 mt-0.5">คุณมีงานที่ต้องส่งเร่งด่วน กรุณาตรวจสอบสมุดบันทึกด้านล่าง</p>
+                    </div>
+                </div>
+                <div id="pinnedBarChips" class="flex items-center gap-2 flex-wrap"></div>
+            </div>
+        </div>
+
         <!-- Menu Tabs -->
         <div class="flex gap-2 mb-8 overflow-x-auto pb-1">
-            <button onclick="switchTab('personal')" id="tabPersonal" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-indigo-600 text-white whitespace-nowrap">
-                📚 การบ้านส่วนตัว
+            <button onclick="switchTab('personal')" id="tabPersonal" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-amber-700 text-white whitespace-nowrap">
+                📓 สมุดการบ้านส่วนตัว
             </button>
             <button onclick="switchTab('history')" id="tabHistory" class="flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-white/30 whitespace-nowrap">
                 📈 ประวัติงาน & สถิติรายวิชา
@@ -55,33 +86,49 @@
             </button>
         </div>
 
-        <!-- Section 1: Personal Tasks -->
+        <!-- Section 1: Personal Tasks (Notebook UI) -->
         <div id="sectionPersonal" class="space-y-8">
             <section class="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-5 rounded-3xl shadow-xl">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">📊 ความคืบหน้าการเคลียร์การบ้านส่วนตัว</span>
-                    <span id="progressText" class="text-xs font-bold text-indigo-600 dark:text-indigo-400">0%</span>
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">📊 ความคืบหน้าการเขียนและเคลียร์สมุดการบ้าน</span>
+                    <span id="progressText" class="text-xs font-bold text-amber-700 dark:text-amber-400">0%</span>
                 </div>
                 <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
-                    <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full w-0 transition-all duration-500"></div>
+                    <div id="progressBar" class="bg-gradient-to-r from-amber-600 to-orange-600 h-full w-0 transition-all duration-500"></div>
                 </div>
+            </section>
+
+            <!-- Quick Add Bar (Smart Natural Language Input) -->
+            <section class="bg-gradient-to-r from-amber-900/90 to-stone-900/90 dark:from-amber-950/90 dark:to-stone-950/90 backdrop-blur-xl border border-amber-600/30 p-6 rounded-3xl shadow-xl text-white">
+                <div class="flex items-center gap-2 mb-2">
+                    <span>⚡</span>
+                    <h2 class="text-base font-bold">Quick Add (จดลงสมุดด่วนในประโยคเดียว)</h2>
+                </div>
+                <p class="text-xs text-amber-200 mb-4">พิมพ์ประโยคธรรมชาติ เช่น "การบ้านคณิตส่งพรุ่งนี้ หน้า 50" หรือ "ฟิสิกส์ ด่วนที่สุด วันนี้" ระบบจะลงสมุดให้ทันที</p>
+                <form id="quickAddForm" class="flex flex-col md:flex-row gap-3">
+                    <input type="text" id="quickAddInput" placeholder="พิมพ์ชื่องาน วิชา และกำหนดส่งในประโยคเดียว..." required
+                        class="w-full bg-white/10 border border-white/25 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white placeholder-amber-200 text-white">
+                    <button type="submit" class="bg-white text-amber-950 hover:bg-amber-50 font-semibold px-6 py-3 rounded-2xl text-sm transition shrink-0 shadow-md">
+                        ✍️ บันทึกลงสมุด
+                    </button>
+                </form>
             </section>
 
             <section class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-6 rounded-3xl shadow-xl">
                 <h2 class="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-                    <span>➕</span> เพิ่มการบ้านส่วนตัวใหม่
+                    <span>➕</span> เขียนบันทึกการบ้านใหม่ (แบบละเอียด)
                 </h2>
 
                 <form id="taskForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="md:col-span-2">
                         <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ชื่องาน / การบ้าน *</label>
                         <input type="text" id="taskTitle" placeholder="เช่น ทำแบบฝึกหัด, อ่านหนังสือสอบ..." required
-                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                     </div>
                     
                     <div>
                         <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">หมวดหมู่วิชา *</label>
-                        <select id="taskCategorySelect" onchange="handleCategoryChange()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                        <select id="taskCategorySelect" onchange="handleCategoryChange()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                             <option value="🧮 คณิตศาสตร์">🧮 คณิตศาสตร์</option>
                             <option value="🧪 เคมี">🧪 เคมี</option>
                             <option value="⚡ ฟิสิกส์">⚡ ฟิสิกส์</option>
@@ -96,18 +143,18 @@
                             <option value="custom">✏️ เพิ่มวิชาอื่นๆ...</option>
                         </select>
                         <input type="text" id="taskCategoryCustom" placeholder="พิมพ์ชื่อวิชา..." style="display:none;"
-                            class="w-full mt-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                            class="w-full mt-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                     </div>
 
                     <div>
                         <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">กำหนดส่ง *</label>
                         <input type="date" id="taskDate" required
-                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                     </div>
 
                     <div>
                         <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ความเร่งด่วน</label>
-                        <select id="taskPriority" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                        <select id="taskPriority" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                             <option value="ปกติ">🟢 ปกติ</option>
                             <option value="ด่วน">⚡ ด่วน (พรุ่งนี้)</option>
                             <option value="ด่วนที่สุด">🔥 ด่วนที่สุด (วันนี้!)</option>
@@ -117,55 +164,86 @@
                     <div class="md:col-span-3">
                         <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">แนบลิงก์ (Canva, Google Drive ฯลฯ)</label>
                         <input type="url" id="taskLink" placeholder="https://..." 
-                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 dark:text-white">
                     </div>
 
                     <div class="flex items-end">
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl px-4 py-2.5 text-sm shadow-md shadow-indigo-600/25 transition">
-                            + บันทึกการบ้าน
+                        <button type="submit" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-medium rounded-xl px-4 py-2.5 text-sm shadow-md shadow-amber-700/25 transition">
+                            + จดลงสมุด
                         </button>
                     </div>
                 </form>
             </section>
 
-            <div class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <span class="text-lg">🔍</span>
-                <input type="text" id="searchInput" placeholder="พิมพ์ชื่อการบ้าน หรือวิชาเพื่อค้นหางานส่วนตัว..." oninput="renderTasks()"
-                    class="w-full bg-transparent border-none text-sm focus:outline-none dark:text-white">
+            <!-- Search and Advanced Tag/Filter Bar -->
+            <div class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center gap-4">
+                <div class="flex items-center gap-3 w-full md:w-1/2">
+                    <span class="text-lg">🔍</span>
+                    <input type="text" id="searchInput" placeholder="ค้นหาหน้าสมุดการบ้าน หรือรายวิชา..." oninput="renderTasks()"
+                        class="w-full bg-transparent border-none text-sm focus:outline-none dark:text-white">
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto w-full md:w-1/2 pb-1 md:justify-end">
+                    <button onclick="setFilterTag('all')" id="filterBtnAll" class="bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition">ทั้งหมด</button>
+                    <button onclick="setFilterTag('🧮 คณิตศาสตร์')" id="filterBtnMath" class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition">🧮 คณิตศาสตร์</button>
+                    <button onclick="setFilterTag('🧪 เคมี')" id="filterBtnChem" class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition">🧪 เคมี</button>
+                    <button onclick="setFilterTag('⚡ ฟิสิกส์')" id="filterBtnPhys" class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition">⚡ ฟิสิกส์</button>
+                    <button onclick="setFilterTag('💬 ภาษาอังกฤษ')" id="filterBtnEng" class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition">💬 ภาษาอังกฤษ</button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
-                    <div class="flex justify-between items-center mb-4 px-1">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">ยังไม่ได้ทำ (To Do)</h3>
+            <!-- Mini Calendar View Component -->
+            <section class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/50 dark:border-slate-800 p-6 rounded-3xl shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <span>📅</span> ปฏิทินกำหนดส่งงานเดือนนี้
+                    </h2>
+                    <span id="calendarMonthLabel" class="text-xs font-semibold text-amber-700 dark:text-amber-400"></span>
+                </div>
+                <div id="miniCalendarGrid" class="grid grid-cols-7 gap-2 text-center text-xs"></div>
+            </section>
+
+            <!-- NOTEBOOK PAGES CONTAINER: UI 3 คอลัมน์จำลองรูปหน้าสมุด -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Page 1: To Do -->
+                <div class="bg-amber-50/95 dark:bg-slate-900/90 border-2 border-amber-900/20 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col relative">
+                    <!-- Notebook Binding Header -->
+                    <div class="bg-amber-800 dark:bg-slate-800 text-white px-5 py-3.5 flex justify-between items-center shadow-md">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                            <h3 class="font-bold text-sm tracking-wide">หน้า 1: ยังไม่ได้ทำ (To Do)</h3>
                         </div>
-                        <span id="todoCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                        <span id="todoCount" class="bg-amber-900/50 text-amber-100 font-bold text-xs px-2.5 py-0.5 rounded-full">0</span>
                     </div>
-                    <div id="todoList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                    <!-- Notebook Lines Background Body -->
+                    <div class="notebook-page p-5 space-y-4 flex-1 min-h-[350px]" id="todoList"></div>
                 </div>
 
-                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
-                    <div class="flex justify-between items-center mb-4 px-1">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">กำลังทำ (In Progress)</h3>
+                <!-- Page 2: In Progress -->
+                <div class="bg-amber-50/95 dark:bg-slate-900/90 border-2 border-amber-900/20 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col relative">
+                    <!-- Notebook Binding Header -->
+                    <div class="bg-amber-800 dark:bg-slate-800 text-white px-5 py-3.5 flex justify-between items-center shadow-md">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-blue-400 inline-block"></span>
+                            <h3 class="font-bold text-sm tracking-wide">หน้า 2: กำลังทำ (In Progress)</h3>
                         </div>
-                        <span id="inprogressCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                        <span id="inprogressCount" class="bg-amber-900/50 text-amber-100 font-bold text-xs px-2.5 py-0.5 rounded-full">0</span>
                     </div>
-                    <div id="inprogressList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                    <!-- Notebook Lines Background Body -->
+                    <div class="notebook-page p-5 space-y-4 flex-1 min-h-[350px]" id="inprogressList"></div>
                 </div>
 
-                <div class="bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex flex-col">
-                    <div class="flex justify-between items-center mb-4 px-1">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            <h3 class="font-semibold text-slate-700 dark:text-slate-300 text-sm">ส่งแล้ว / เสร็จสิ้น (Done)</h3>
+                <!-- Page 3: Done -->
+                <div class="bg-amber-50/95 dark:bg-slate-900/90 border-2 border-amber-900/20 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col relative">
+                    <!-- Notebook Binding Header -->
+                    <div class="bg-amber-800 dark:bg-slate-800 text-white px-5 py-3.5 flex justify-between items-center shadow-md">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
+                            <h3 class="font-bold text-sm tracking-wide">หน้า 3: เสร็จสิ้น (Done)</h3>
                         </div>
-                        <span id="doneCount" class="bg-white dark:bg-slate-800 text-slate-600 font-semibold text-xs px-2.5 py-1 rounded-full shadow-xs">0</span>
+                        <span id="doneCount" class="bg-amber-900/50 text-amber-100 font-bold text-xs px-2.5 py-0.5 rounded-full">0</span>
                     </div>
-                    <div id="doneList" class="space-y-4 flex-1 min-h-[250px]"></div>
+                    <!-- Notebook Lines Background Body -->
+                    <div class="notebook-page p-5 space-y-4 flex-1 min-h-[350px]" id="doneList"></div>
                 </div>
             </div>
         </div>
@@ -183,11 +261,9 @@
                 </div>
 
                 <!-- Subject Analytics Cards Grid -->
-                <div id="subjectStatsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                    <!-- Cards will be injected via JS -->
-                </div>
+                <div id="subjectStatsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
 
-                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">🗂️ ประวัติการบ้านทั้งหมด (History Log)</h3>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">🗂️ ประวัติการบ้านทั้งหมดในสมุด (History Log)</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
@@ -198,9 +274,7 @@
                                 <th class="py-3 px-4 font-semibold">สถานะ</th>
                             </tr>
                         </thead>
-                        <tbody id="historyTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60">
-                            <!-- Rows will be injected via JS -->
-                        </tbody>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60"></tbody>
                     </table>
                 </div>
             </section>
@@ -262,6 +336,25 @@
         </div>
     </div>
 
+    <!-- Focus Mode Modal Component -->
+    <div id="focusModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 md:p-8 rounded-3xl shadow-2xl max-w-lg w-full slide-up text-center relative">
+            <button onclick="closeFocusMode()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg font-bold p-2">✕</button>
+            <span class="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-xs font-semibold px-3 py-1 rounded-full inline-block mb-3" id="focusCategoryBadge">วิชา</span>
+            <h2 id="focusTitleText" class="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">ชื่องานการบ้าน</h2>
+            <p id="focusDateText" class="text-xs text-rose-600 font-semibold mb-6">กำหนดส่ง: วันนี้</p>
+            <div id="focusSubtaskContainer" class="text-left mb-6 space-y-2"></div>
+            <div class="flex gap-3 justify-center">
+                <button onclick="focusCompleteCurrentTask()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-6 py-3 rounded-2xl shadow-md transition">
+                    ✅ ทำงานนี้เสร็จแล้ว
+                </button>
+                <button onclick="closeFocusMode()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium px-6 py-3 rounded-2xl transition">
+                    ปิดโหมดโฟกัส
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- 1. ระบบจัดการ Tab ---
         function switchTab(tab) {
@@ -273,12 +366,10 @@
             const hBtn = document.getElementById('tabHistory');
             const lBtn = document.getElementById('tabLeader');
 
-            // ซ่อนทั้งหมดก่อน
             pSec.style.display = 'none';
             hSec.style.display = 'none';
             lSec.style.display = 'none';
 
-            // รีเซ็ตปุ่มเป็นค่าปกติ
             const inactiveClass = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-white/30 whitespace-nowrap";
             pBtn.className = inactiveClass;
             hBtn.className = inactiveClass;
@@ -286,10 +377,10 @@
 
             if (tab === 'personal') {
                 pSec.style.display = 'block';
-                pBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-indigo-600 text-white whitespace-nowrap";
+                pBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-amber-700 text-white whitespace-nowrap";
             } else if (tab === 'history') {
                 hSec.style.display = 'block';
-                hBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-indigo-600 text-white whitespace-nowrap";
+                hBtn.className = "flex-1 py-3 px-4 rounded-2xl font-semibold text-xs md:text-sm transition shadow-lg bg-amber-700 text-white whitespace-nowrap";
                 renderHistoryAndStats();
             } else if (tab === 'leader') {
                 lSec.style.display = 'block';
@@ -329,8 +420,10 @@
             localStorage.removeItem('academic_wallpaper');
         }
 
-        // --- 3. ระบบการบ้านส่วนตัว ---
+        // --- 3. ระบบการบ้านส่วนตัว & ฟีเจอร์สมุดบันทึก ---
         let tasks = JSON.parse(localStorage.getItem('academic_quest_tasks')) || [];
+        let currentFilterTag = 'all';
+        let currentFocusTaskId = null;
 
         function handleCategoryChange() {
             const select = document.getElementById('taskCategorySelect');
@@ -369,9 +462,61 @@
             handleCategoryChange();
         });
 
+        // Quick Add (Smart Natural Language Input Parser)
+        const quickAddForm = document.getElementById('quickAddForm');
+        quickAddForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const inputVal = document.getElementById('quickAddInput').value.trim();
+            if(!inputVal) return;
+
+            let detectedCategory = '🧮 คณิตศาสตร์';
+            const lowerText = inputVal.toLowerCase();
+            if(lowerText.includes('เคมี')) detectedCategory = '🧪 เคมี';
+            else if(lowerText.includes('ฟิสิกส์')) detectedCategory = '⚡ ฟิสิกส์';
+            else if(lowerText.includes('ชีวะ')) detectedCategory = '🧬 ชีวะ';
+            else if(lowerText.includes('ไทย')) detectedCategory = '📖 ภาษาไทย';
+            else if(lowerText.includes('สังคม')) detectedCategory = '🌍 สังคมศึกษา';
+            else if(lowerText.includes('อังกฤษ') || lowerText.includes('english')) detectedCategory = '💬 ภาษาอังกฤษ';
+            else if(lowerText.includes('คอม') || lowerText.includes('it')) detectedCategory = '💻 คอมพิวเตอร์';
+
+            let detectedPriority = 'ปกติ';
+            if(lowerText.includes('ด่วนที่สุด') || lowerText.includes('วันนี้')) detectedPriority = 'ด่วนที่สุด';
+            else if(lowerText.includes('ด่วน') || lowerText.includes('พรุ่งนี้')) detectedPriority = 'ด่วน';
+
+            const today = new Date();
+            let targetDateStr = today.toISOString().split('T')[0];
+            if(lowerText.includes('พรุ่งนี้')) {
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                targetDateStr = tomorrow.toISOString().split('T')[0];
+            } else if(lowerText.includes('มะรืน')) {
+                const dayAfter = new Date(today);
+                dayAfter.setDate(today.getDate() + 2);
+                targetDateStr = dayAfter.toISOString().split('T')[0];
+            }
+
+            const newTask = {
+                id: Date.now(),
+                title: inputVal,
+                category: detectedCategory,
+                date: targetDateStr,
+                priority: detectedPriority,
+                link: '',
+                subtasks: [],
+                status: 'todo'
+            };
+
+            tasks.push(newTask);
+            saveAndRenderTasks();
+            quickAddForm.reset();
+            alert('✍️ จดลงสมุดผ่าน Quick Add สำเร็จ!');
+        });
+
         function saveAndRenderTasks() {
             localStorage.setItem('academic_quest_tasks', JSON.stringify(tasks));
             renderTasks();
+            renderPinnedPriorityBar();
+            renderMiniCalendar();
         }
 
         function changeStatus(id, newStatus) {
@@ -383,7 +528,7 @@
         }
 
         function deleteTask(id) {
-            if(confirm('ต้องการลบการบ้านนี้ใช่ไหม?')) {
+            if(confirm('ต้องการลบบันทึกการบ้านนี้ใช่ไหม?')) {
                 tasks = tasks.filter(task => task.id !== id);
                 saveAndRenderTasks();
             }
@@ -425,6 +570,132 @@
             saveAndRenderTasks();
         }
 
+        function setFilterTag(tag) {
+            currentFilterTag = tag;
+            ['all', 'Math', 'Chem', 'Phys', 'Eng'].forEach(t => {
+                const btn = document.getElementById(`filterBtn${t}`);
+                if(btn) {
+                    btn.className = "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition";
+                }
+            });
+            let activeBtnId = 'filterBtnAll';
+            if(tag === '🧮 คณิตศาสตร์') activeBtnId = 'filterBtnMath';
+            else if(tag === '🧪 เคมี') activeBtnId = 'filterBtnChem';
+            else if(tag === '⚡ ฟิสิกส์') activeBtnId = 'filterBtnPhys';
+            else if(tag === '💬 ภาษาอังกฤษ') activeBtnId = 'filterBtnEng';
+
+            const activeBtn = document.getElementById(activeBtnId);
+            if(activeBtn) {
+                activeBtn.className = "bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition";
+            }
+            renderTasks();
+        }
+
+        // Pinned Priority Bar Renderer
+        function renderPinnedPriorityBar() {
+            const container = document.getElementById('pinnedBarContainer');
+            const chips = document.getElementById('pinnedBarChips');
+            chips.innerHTML = '';
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const tomorrowDate = new Date();
+            tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+            const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+            const urgentTasks = tasks.filter(t => t.status !== 'done' && (t.date === todayStr || t.date === tomorrowStr || t.priority === 'ด่วนที่สุด'));
+
+            if(urgentTasks.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            urgentTasks.forEach(task => {
+                const span = document.createElement('span');
+                span.className = "bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition border border-white/30";
+                span.innerHTML = `📌 [${task.category}] ${task.title} (${task.date === todayStr ? 'วันนี้!' : 'พรุ่งนี้'})`;
+                span.onclick = () => openFocusMode(task.id);
+                chips.appendChild(span);
+            });
+        }
+
+        // Focus Mode Controllers
+        function openFocusMode(id) {
+            const task = tasks.find(t => t.id === id);
+            if(!task) return;
+            currentFocusTaskId = id;
+            document.getElementById('focusCategoryBadge').innerText = task.category;
+            document.getElementById('focusTitleText').innerText = task.title;
+            document.getElementById('focusDateText').innerText = `📅 กำหนดส่ง: ${task.date}`;
+
+            const subContainer = document.getElementById('focusSubtaskContainer');
+            subContainer.innerHTML = '';
+            if(task.subtasks && task.subtasks.length > 0) {
+                task.subtasks.forEach(sub => {
+                    subContainer.innerHTML += `
+                        <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl text-xs">
+                            <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id}, ${sub.id}); openFocusMode(${task.id});" class="rounded text-amber-700">
+                            <span class="${sub.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-300'}">${sub.text}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                subContainer.innerHTML = `<p class="text-xs text-slate-400 text-center">ไม่มีข้อย่อย ลุยงานนี้ในสมุดให้เต็มที่เลยครับ!</p>`;
+            }
+
+            document.getElementById('focusModal').style.display = 'flex';
+        }
+
+        function closeFocusMode() {
+            document.getElementById('focusModal').style.display = 'none';
+            currentFocusTaskId = null;
+        }
+
+        function focusCompleteCurrentTask() {
+            if(currentFocusTaskId) {
+                changeStatus(currentFocusTaskId, 'done');
+                closeFocusMode();
+            }
+        }
+
+        // Mini Calendar View Renderer
+        function renderMiniCalendar() {
+            const grid = document.getElementById('miniCalendarGrid');
+            const label = document.getElementById('calendarMonthLabel');
+            grid.innerHTML = '';
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            label.innerText = `${monthNames[month]} ${year + 543}`;
+
+            const daysOfWeek = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+            daysOfWeek.forEach(d => {
+                grid.innerHTML += `<div class="font-bold text-slate-400 text-[10px]">${d}</div>`;
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const todayStr = now.toISOString().split('T')[0];
+
+            for(let i = 0; i < firstDayIndex; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
+
+            for(let day = 1; day <= totalDays; day++) {
+                const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const hasTask = tasks.some(t => t.date === dayStr && t.status !== 'done');
+                const isToday = dayStr === todayStr;
+
+                let bgClass = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+                if(isToday) bgClass = "bg-amber-700 text-white font-bold";
+                else if(hasTask) bgClass = "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold border border-rose-300";
+
+                grid.innerHTML += `<div class="p-1 rounded-xl text-xs ${bgClass} flex flex-col items-center justify-center">${day} ${hasTask ? '•' : ''}</div>`;
+            }
+        }
+
         function renderTasks() {
             const todoList = document.getElementById('todoList');
             const inprogressList = document.getElementById('inprogressList');
@@ -439,8 +710,9 @@
             const todayStr = new Date().toISOString().split('T')[0];
 
             const filteredTasks = tasks.filter(task => {
-                if (!searchQuery) return true;
-                return task.title.toLowerCase().includes(searchQuery) || task.category.toLowerCase().includes(searchQuery);
+                const matchSearch = !searchQuery || task.title.toLowerCase().includes(searchQuery) || task.category.toLowerCase().includes(searchQuery);
+                const matchTag = currentFilterTag === 'all' || task.category.includes(currentFilterTag);
+                return matchSearch && matchTag;
             });
 
             filteredTasks.forEach(task => {
@@ -453,12 +725,12 @@
 
                 let subHtml = '';
                 if(task.subtasks && task.subtasks.length > 0) {
-                    subHtml = `<div class="space-y-1.5 my-3 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">`;
+                    subHtml = `<div class="space-y-1.5 my-3 bg-white/70 dark:bg-slate-800/50 p-2.5 rounded-xl border border-amber-900/10 dark:border-slate-800">`;
                     task.subtasks.forEach(sub => {
                         subHtml += `
                             <div class="flex items-center justify-between text-xs">
                                 <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id}, ${sub.id})" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id}, ${sub.id})" class="rounded text-amber-700 focus:ring-amber-600">
                                     <span class="${sub.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}">${sub.text}</span>
                                 </label>
                                 <button onclick="deleteSubtask(${task.id}, ${sub.id})" class="text-slate-300 hover:text-rose-500">×</button>
@@ -469,22 +741,25 @@
                 }
 
                 const card = document.createElement('div');
-                card.className = "task-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between";
+                card.className = "task-card bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border border-amber-900/15 dark:border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col justify-between";
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start gap-2 mb-2">
                             <span class="font-medium text-slate-800 dark:text-slate-200 text-sm leading-snug">${task.title}</span>
-                            <span class="text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${priorityBadge}">${task.priority}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button onclick="openFocusMode(${task.id})" class="text-[10px] bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 text-amber-700 px-2 py-0.5 rounded font-medium transition" title="โหมดโฟกัส">🎯 โฟกัส</button>
+                                <span class="text-[11px] font-medium px-2 py-0.5 rounded-full ${priorityBadge}">${task.priority}</span>
+                            </div>
                         </div>
                         <div class="mb-2">
-                            <span class="bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-[11px] font-medium px-2 py-0.5 rounded">${task.category}</span>
+                            <span class="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[11px] font-medium px-2 py-0.5 rounded">${task.category}</span>
                         </div>
-                        ${task.link ? `<a href="${task.link}" target="_blank" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 mb-2 font-medium">🔗 เปิดลิงก์งาน/สไลด์</a>` : ''}
+                        ${task.link ? `<a href="${task.link}" target="_blank" class="text-xs text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 mb-2 font-medium">🔗 เปิดลิงก์งาน/สไลด์</a>` : ''}
                         
                         ${subHtml}
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="sub-input-${task.id}" placeholder="+ เพิ่มข้อย่อย..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:text-white">
-                            <button onclick="addSubtask(${task.id})" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs px-2.5 py-1 rounded-lg font-medium shrink-0">เพิ่ม</button>
+                            <input type="text" id="sub-input-${task.id}" placeholder="+ เพิ่มข้อย่อย..." class="w-full bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-600 dark:text-white">
+                            <button onclick="addSubtask(${task.id})" class="bg-amber-100 hover:bg-amber-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-900 dark:text-slate-300 text-xs px-2.5 py-1 rounded-lg font-medium shrink-0">เพิ่ม</button>
                         </div>
 
                         <div class="text-[11px] mb-3 ${dateBadgeClass}">
@@ -493,8 +768,8 @@
                     </div>
                     <div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
                         <div class="flex items-center gap-1.5">
-                            ${task.status !== 'todo' ? `<button onclick="changeStatus(${task.id}, 'todo')" class="text-slate-400 hover:text-indigo-600 transition">⬅️ ยังไม่ทำ</button>` : ''}
-                            ${task.status !== 'inprogress' && task.status !== 'done' ? `<button onclick="changeStatus(${task.id}, 'inprogress')" class="text-indigo-600 dark:text-indigo-400 font-medium transition">กำลังทำ ⚡</button>` : ''}
+                            ${task.status !== 'todo' ? `<button onclick="changeStatus(${task.id}, 'todo')" class="text-slate-400 hover:text-amber-700 transition">⬅️ ย้ายไปหน้าแรก</button>` : ''}
+                            ${task.status !== 'inprogress' && task.status !== 'done' ? `<button onclick="changeStatus(${task.id}, 'inprogress')" class="text-blue-600 dark:text-blue-400 font-medium transition">กำลังทำ ⚡</button>` : ''}
                             ${task.status !== 'done' ? `<button onclick="changeStatus(${task.id}, 'done')" class="text-emerald-600 dark:text-emerald-400 font-medium transition">เสร็จ ✅</button>` : ''}
                         </div>
                         <button onclick="deleteTask(${task.id})" class="text-slate-300 hover:text-rose-500 transition text-[11px]">ลบ</button>
@@ -532,7 +807,6 @@
             statsGrid.innerHTML = '';
             tableBody.innerHTML = '';
 
-            // รวมข้อมูลแยกตามรายวิชา
             const subjectMap = {};
             tasks.forEach(task => {
                 const cat = task.category || 'อื่นๆ';
@@ -545,14 +819,12 @@
                 }
             });
 
-            // ถ้าไม่มีข้อมูลงานเลย
             if (Object.keys(subjectMap).length === 0) {
-                statsGrid.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-6">ยังไม่มีประวัติงานในระบบ</p>`;
+                statsGrid.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-6">ยังไม่มีประวัติงานในสมุด</p>`;
                 tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">ยังไม่มีข้อมูลประวัติการบ้าน</td></tr>`;
                 return;
             }
 
-            // แสดงการ์ดสถิติแยกตามรายวิชา
             for (const [subject, data] of Object.entries(subjectMap)) {
                 const percent = data.total === 0 ? 0 : Math.round((data.done / data.total) * 100);
                 const card = document.createElement('div');
@@ -561,24 +833,23 @@
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">${subject}</span>
-                            <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">${percent}%</span>
+                            <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">${percent}%</span>
                         </div>
                         <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
                             ทำแล้ว <span class="font-semibold text-emerald-600">${data.done}</span> จากทั้งหมด <span class="font-semibold">${data.total}</span> งาน
                         </div>
                     </div>
                     <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                        <div class="bg-indigo-600 h-full transition-all duration-500" style="width: ${percent}%"></div>
+                        <div class="bg-amber-700 h-full transition-all duration-500" style="width: ${percent}%"></div>
                     </div>
                 `;
                 statsGrid.appendChild(card);
             }
 
-            // แสดงตารางประวัติงานทั้งหมด (History Log Table)
             tasks.forEach(task => {
                 let statusBadge = '';
-                if(task.status === 'todo') statusBadge = '<span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded text-[10px] font-medium">ยังไม่ได้ทำ</span>';
-                else if(task.status === 'inprogress') statusBadge = '<span class="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-[10px] font-medium">กำลังทำ</span>';
+                if(task.status === 'todo') statusBadge = '<span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px] font-medium">ยังไม่ได้ทำ</span>';
+                else if(task.status === 'inprogress') statusBadge = '<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-medium">กำลังทำ</span>';
                 else if(task.status === 'done') statusBadge = '<span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-medium">เสร็จสิ้น</span>';
 
                 const row = document.createElement('tr');
@@ -671,8 +942,10 @@
             });
         }
 
-        // เริ่มต้นรันระบบ
+        // เริ่มต้นรันระบบทั้งหมด
         renderTasks();
+        renderPinnedPriorityBar();
+        renderMiniCalendar();
         loadLeaderData();
     </script>
 </body>
